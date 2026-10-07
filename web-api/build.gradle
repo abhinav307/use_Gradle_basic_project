@@ -1,0 +1,15 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    implementation project(':core-engine')
+    implementation project(':market-gateway')
+    implementation project(':notification-pipeline')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    
+    // We will stick to H2 for local execution without Docker complexity
+    runtimeOnly 'com.h2database:h2'
+}
