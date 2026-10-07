@@ -104,5 +104,8 @@ class PortfolioServiceTest {
         assertEquals(1400.0, summary.costBasis(), 0.01);
         assertEquals(1800.0, summary.currentValue(), 0.01);
         assertEquals(28.57, summary.roi(), 0.01); // ((1800-1400)/1400)*100
+        assertEquals(400.0, summary.profitLoss(), 0.01);
+        assertEquals(140.0, summary.avgBuyPrice(), 0.01);
+        assertTrue(summary.fetchSuccess());
     }
 }

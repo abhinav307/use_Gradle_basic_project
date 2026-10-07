@@ -20,18 +20,28 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadDashboard() {
     showLoader(true);
     try {
-        const response = await fetch('/api/portfolio');
-        const data = await response.json();
+        const [portfolioRes, historyRes] = await Promise.all([
+            fetch('/api/portfolio'),
+            fetch('/api/transactions')
+        ]);
+        
+        const data = await portfolioRes.json();
+        const historyData = await historyRes.json();
         
         // Update top metrics
         document.getElementById('totalValue').innerText = formatter.format(data.totalValue);
         document.getElementById('totalCost').innerText = formatter.format(data.totalCost);
         
+        const totalPl = data.totalValue - data.totalCost;
+        const plEl = document.getElementById('totalPl');
+        plEl.innerText = (totalPl >= 0 ? '+' : '') + formatter.format(totalPl);
+        plEl.className = `text-3xl font-bold ${totalPl >= 0 ? 'text-green-500' : 'text-red-500'}`;
+
         const roiEl = document.getElementById('totalRoi');
         roiEl.innerText = (data.totalRoi >= 0 ? '+' : '') + data.totalRoi.toFixed(2) + '%';
         roiEl.className = `text-3xl font-bold ${data.totalRoi >= 0 ? 'text-green-500' : 'text-red-500'}`;
 
-        // Render Table
+        // Render Summary Table
         const tbody = document.getElementById('assetsTableBody');
         tbody.innerHTML = '';
         
@@ -39,9 +49,11 @@ async function loadDashboard() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-50';
             
-            const isProfit = asset.roi >= 0;
-            const roiColor = isProfit ? 'text-green-600' : 'text-red-600';
+            const isProfit = asset.profitLoss >= 0;
+            const colorClass = isProfit ? 'text-green-600' : 'text-red-600';
             const roiIcon = isProfit ? '<i class="fa-solid fa-arrow-trend-up mr-1"></i>' : '<i class="fa-solid fa-arrow-trend-down mr-1"></i>';
+            const plStr = (isProfit ? '+' : '') + formatter.format(asset.profitLoss);
+            const roiStr = asset.fetchSuccess ? `${asset.roi.toFixed(2)}%` : 'API Error';
 
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${asset.symbol}</td>
@@ -51,27 +63,59 @@ async function loadDashboard() {
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">${asset.totalQuantity.toFixed(4)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${formatter.format(asset.costBasis)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${formatter.format(asset.avgBuyPrice)}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">${formatter.format(asset.livePrice)}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-right">${formatter.format(asset.currentValue)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${roiColor}">
-                    ${roiIcon} ${(asset.roi > -100 ? asset.roi.toFixed(2) : 0)}%
-                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${colorClass}">${plStr}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${colorClass}">${roiIcon} ${roiStr}</td>
             `;
             tbody.appendChild(tr);
+        });
+
+        // Render History Table
+        const hbody = document.getElementById('historyTableBody');
+        hbody.innerHTML = '';
+        
+        historyData.forEach(txn => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50';
+            const total = txn.quantity * txn.purchasePrice;
+            // The JSON from backend returns java LocalDate array or object depending on Jackson config.
+            // With JSR310, it's usually [YYYY, MM, DD] or "YYYY-MM-DD". Let's handle both.
+            let dateStr = Array.isArray(txn.purchaseDate) ? 
+                `${txn.purchaseDate[0]}-${String(txn.purchaseDate[1]).padStart(2, '0')}-${String(txn.purchaseDate[2]).padStart(2, '0')}` : 
+                txn.purchaseDate;
+
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${dateStr}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${txn.symbol}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">${txn.quantity}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">${formatter.format(txn.purchasePrice)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">${formatter.format(total)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <button onclick="deleteTransaction(${txn.id})" class="text-red-500 hover:text-red-700 transition" title="Delete">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            hbody.appendChild(tr);
         });
 
         // Update Chart
         renderChart(data.assets);
 
     } catch (error) {
-        console.error('Failed to load portfolio', error);
+        console.error('Failed to load dashboard', error);
     } finally {
         showLoader(false);
     }
 }
 
 async function submitTransaction() {
+    const btn = document.getElementById('addBtn');
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Verifying & Adding...';
+    btn.disabled = true;
+
     const payload = {
         symbol: document.getElementById('symbol').value.trim(),
         type: document.getElementById('type').value,
@@ -97,7 +141,7 @@ async function submitTransaction() {
             loadDashboard(); // Refresh data
         } else {
             const err = await response.json();
-            msgEl.textContent = 'Error: ' + err.error;
+            msgEl.textContent = err.error;
             msgEl.className = 'mt-3 text-sm text-center text-red-600 block';
         }
     } catch (error) {
@@ -105,7 +149,27 @@ async function submitTransaction() {
         msgEl.className = 'mt-3 text-sm text-center text-red-600 block';
     }
 
-    setTimeout(() => { msgEl.classList.add('hidden'); }, 3000);
+    btn.innerHTML = 'Add to Portfolio';
+    btn.disabled = false;
+    setTimeout(() => { msgEl.classList.add('hidden'); }, 5000);
+}
+
+async function deleteTransaction(id) {
+    if (!confirm('Are you sure you want to delete this transaction?')) return;
+    
+    showLoader(true);
+    try {
+        const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            loadDashboard();
+        } else {
+            alert("Failed to delete transaction.");
+            showLoader(false);
+        }
+    } catch (e) {
+        alert("Network error.");
+        showLoader(false);
+    }
 }
 
 async function refreshData() {

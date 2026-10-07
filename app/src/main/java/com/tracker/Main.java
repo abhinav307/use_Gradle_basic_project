@@ -106,6 +106,13 @@ public class Main {
         app.post("/api/transactions", ctx -> {
             TransactionRequest req = ctx.bodyAsClass(TransactionRequest.class);
             try {
+                // Validate symbol by making a test API call before saving
+                if (req.type().equalsIgnoreCase("STOCK")) {
+                    stockClient.fetchPrice(req.symbol());
+                } else {
+                    cryptoClient.fetchPrice(req.symbol());
+                }
+
                 Transaction t = new Transaction(
                         req.symbol(),
                         AssetType.valueOf(req.type().toUpperCase()),
@@ -115,13 +122,42 @@ public class Main {
                 );
                 txnRepo.save(t);
                 portfolio.addTransaction(t);
+                
+                // Refresh cache for this symbol so it shows up immediately
+                priceCache.clearCache();
+                
                 ctx.status(201).json(Map.of("message", "Transaction added successfully", "transaction", t));
             } catch (Exception e) {
-                ctx.status(400).json(Map.of("error", e.getMessage()));
+                ctx.status(400).json(Map.of("error", "Invalid symbol or API error: " + e.getMessage()));
             }
         });
 
-        // 3. Refresh Cache
+        // 3. Get All Raw Transactions (History)
+        app.get("/api/transactions", ctx -> {
+            try {
+                ctx.json(txnRepo.findAll());
+            } catch (SQLException e) {
+                ctx.status(500).json(Map.of("error", e.getMessage()));
+            }
+        });
+
+        // 4. Delete Transaction
+        app.delete("/api/transactions/{id}", ctx -> {
+            try {
+                int id = Integer.parseInt(ctx.pathParam("id"));
+                txnRepo.deleteById(id);
+                
+                // Rebuild portfolio state from scratch
+                portfolio.getTransactions().clear();
+                txnRepo.findAll().forEach(portfolio::addTransaction);
+                
+                ctx.json(Map.of("message", "Transaction deleted"));
+            } catch (Exception e) {
+                ctx.status(500).json(Map.of("error", e.getMessage()));
+            }
+        });
+
+        // 5. Refresh Cache
         app.post("/api/refresh", ctx -> {
             priceCache.clearCache();
             ctx.json(Map.of("message", "Cache cleared. Next fetch will pull live data."));

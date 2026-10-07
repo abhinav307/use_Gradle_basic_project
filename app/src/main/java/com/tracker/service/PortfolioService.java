@@ -85,17 +85,18 @@ public class PortfolioService {
 
             MarketPrice mp = livePrices.get(symbol);
 
+            double costBasis = calculateCostBasis(txns);
+            double totalQty = txns.stream().mapToDouble(Transaction::getQuantity).sum();
+            double avgBuyPrice = totalQty > 0 ? costBasis / totalQty : 0;
+
             if (mp != null) {
                 double currentValue = calculateCurrentValue(txns, mp.getPrice());
-                double costBasis = calculateCostBasis(txns);
                 double roi = calculateROI(currentValue, costBasis);
-                double totalQty = txns.stream().mapToDouble(Transaction::getQuantity).sum();
+                double profitLoss = currentValue - costBasis;
 
-                summaries.add(new AssetSummary(symbol, type, totalQty, costBasis, currentValue, roi, mp.getPrice()));
+                summaries.add(new AssetSummary(symbol, type, totalQty, costBasis, currentValue, roi, mp.getPrice(), profitLoss, avgBuyPrice, true));
             } else {
-                double costBasis = calculateCostBasis(txns);
-                double totalQty = txns.stream().mapToDouble(Transaction::getQuantity).sum();
-                summaries.add(new AssetSummary(symbol, type, totalQty, costBasis, 0, -100.0, 0));
+                summaries.add(new AssetSummary(symbol, type, totalQty, costBasis, 0, 0, 0, 0, avgBuyPrice, false));
             }
         }
 
@@ -145,6 +146,9 @@ public class PortfolioService {
             double costBasis,
             double currentValue,
             double roi,
-            double livePrice
+            double livePrice,
+            double profitLoss,
+            double avgBuyPrice,
+            boolean fetchSuccess
     ) {}
 }
