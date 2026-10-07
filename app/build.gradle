@@ -24,6 +24,10 @@ dependencies {
 
     // Persistence: Light database to store user transactions
     implementation 'com.h2database:h2:2.2.224'
+    
+    // Web Framework: Javalin for REST APIs and serving static files
+    implementation 'io.javalin:javalin:6.1.3'
+    implementation 'org.slf4j:slf4j-simple:2.0.12'
 
     // Testing Frameworks
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
