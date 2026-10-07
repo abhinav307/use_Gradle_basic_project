@@ -25,7 +25,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b'];
 
 function App() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
-  const [feeReport, setFeeReport] = useState<string>('');
+  const [insights, setInsights] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const userId = '123e4567-e89b-12d3-a456-426614174000';
 
@@ -40,8 +40,8 @@ function App() {
       .then(res => setSummary(res.data))
       .catch(err => console.error(err));
 
-    axios.get('http://localhost:8080/api/v1/analytics/fee-audit', { headers })
-      .then(res => setFeeReport(res.data))
+    axios.get('http://localhost:8080/api/v1/analytics/insights', { headers })
+      .then(res => setInsights(res.data))
       .catch(err => console.error(err));
       
     axios.get('http://localhost:8080/api/v1/portfolios/transactions', { headers })
@@ -73,12 +73,21 @@ function App() {
           </button>
         </div>
 
-        {feeReport && feeReport.includes('ALERT') && (
+        {insights?.feeAuditReport && insights.feeAuditReport.includes('ALERT') && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 shadow-sm">
             <ShieldAlert className="text-red-500 w-6 h-6 mt-0.5" />
             <div>
               <h3 className="text-red-800 font-bold">Hidden Fee Drain Detected</h3>
-              <p className="text-red-700 mt-1">{feeReport}</p>
+              <p className="text-red-700 mt-1">{insights.feeAuditReport}</p>
+            </div>
+          </div>
+        )}
+        {insights?.diversityWarning && (
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg flex items-start gap-3 shadow-sm mt-4">
+            <Activity className="text-amber-500 w-6 h-6 mt-0.5" />
+            <div>
+              <h3 className="text-amber-800 font-bold">Optimization Insight</h3>
+              <p className="text-amber-700 mt-1">{insights.diversityWarning}</p>
             </div>
           </div>
         )}
@@ -114,7 +123,7 @@ function App() {
             </div>
             <div>
               <p className="text-sm font-medium text-slate-500">Community Health Score</p>
-              <h2 className="text-2xl font-bold text-slate-900">92 / 100</h2>
+              <h2 className="text-2xl font-bold text-slate-900">{insights?.communityHealthScore || 0} / 100</h2>
             </div>
           </div>
         </div>
