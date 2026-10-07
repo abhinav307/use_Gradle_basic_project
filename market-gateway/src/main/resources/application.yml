@@ -1,0 +1,19 @@
+resilience4j.circuitbreaker:
+  instances:
+    alphaVantage:
+      slidingWindowSize: 5
+      failureRateThreshold: 50
+      waitDurationInOpenState: 15s
+    coinGecko:
+      slidingWindowSize: 5
+      failureRateThreshold: 50
+      waitDurationInOpenState: 15s
+
+resilience4j.retry:
+  instances:
+    alphaVantage:
+      maxAttempts: 3
+      waitDuration: 2s
+    coinGecko:
+      maxAttempts: 3
+      waitDuration: 2s
