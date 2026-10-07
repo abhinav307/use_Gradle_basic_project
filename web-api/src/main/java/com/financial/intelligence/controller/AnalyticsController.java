@@ -1,11 +1,12 @@
 package com.financial.intelligence.controller;
 
+import com.financial.intelligence.repository.TransactionRepository;
 import com.financial.intelligence.service.FeeOptimizationEngine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
@@ -14,11 +15,11 @@ import java.util.Collections;
 public class AnalyticsController {
     
     private final FeeOptimizationEngine feeEngine;
+    private final TransactionRepository transactionRepository;
 
     @GetMapping("/fee-audit")
-    public ResponseEntity<String> runFeeAudit() {
-        // Ideally we fetch the user's transactions from the DB here
-        String report = feeEngine.evaluateFeeImpact(Collections.emptyList());
+    public ResponseEntity<String> runFeeAudit(@RequestHeader("X-User-Id") UUID userId) {
+        String report = feeEngine.evaluateFeeImpact(transactionRepository.findByUserId(userId));
         return ResponseEntity.ok(report);
     }
 }
