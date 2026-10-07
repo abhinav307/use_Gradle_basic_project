@@ -9,7 +9,10 @@ import com.tracker.repository.DatabaseManager;
 import com.tracker.repository.TransactionRepository;
 import com.tracker.service.PortfolioService;
 import com.tracker.service.PriceCache;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.javalin.Javalin;
+import io.javalin.json.JavalinJackson;
 import io.javalin.http.staticfiles.Location;
 
 import java.sql.SQLException;
@@ -61,7 +64,13 @@ public class Main {
         PortfolioService portfolioService = new PortfolioService(priceCache);
 
         // --- Setup Web Server (Javalin) ---
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+
         Javalin app = Javalin.create(config -> {
+            // Configure Jackson to handle Java 8+ Dates
+            config.jsonMapper(new JavalinJackson(mapper, false));
+            
             // Serve static files (HTML, CSS, JS) from src/main/resources/public
             config.staticFiles.add("/public", Location.CLASSPATH);
             
