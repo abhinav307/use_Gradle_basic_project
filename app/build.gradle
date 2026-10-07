@@ -57,3 +57,7 @@ tasks.withType(Test).configureEach {
 application {
     mainClass = 'com.tracker.Main'
 }
+
+tasks.named('run') {
+    standardInput = System.in
+}

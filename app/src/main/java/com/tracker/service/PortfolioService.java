@@ -75,27 +75,24 @@ public class PortfolioService {
         List<AssetSummary> summaries = new ArrayList<>();
         Map<String, List<Transaction>> grouped = portfolio.getTransactionsBySymbol();
 
+        // Pre-fetch all prices in parallel
+        Map<String, MarketPrice> livePrices = fetchAllPricesInParallel(portfolio);
+
         for (Map.Entry<String, List<Transaction>> entry : grouped.entrySet()) {
             String symbol = entry.getKey();
             List<Transaction> txns = entry.getValue();
             AssetType type = txns.get(0).getAssetType();
 
-            try {
-                MarketPrice mp;
-                if (type == AssetType.CRYPTO) {
-                    mp = priceCache.getCryptoPrice(symbol);
-                } else {
-                    mp = priceCache.getStockPrice(symbol);
-                }
+            MarketPrice mp = livePrices.get(symbol);
 
+            if (mp != null) {
                 double currentValue = calculateCurrentValue(txns, mp.getPrice());
                 double costBasis = calculateCostBasis(txns);
                 double roi = calculateROI(currentValue, costBasis);
                 double totalQty = txns.stream().mapToDouble(Transaction::getQuantity).sum();
 
                 summaries.add(new AssetSummary(symbol, type, totalQty, costBasis, currentValue, roi, mp.getPrice()));
-            } catch (IOException e) {
-                System.err.println("  [ERROR] Failed to fetch price for " + symbol + ": " + e.getMessage());
+            } else {
                 double costBasis = calculateCostBasis(txns);
                 double totalQty = txns.stream().mapToDouble(Transaction::getQuantity).sum();
                 summaries.add(new AssetSummary(symbol, type, totalQty, costBasis, 0, -100.0, 0));

@@ -191,7 +191,7 @@ public class Main {
             System.out.println("\n═══════════════════════════════════════════════════════");
             System.out.println("   MENU");
             System.out.println("═══════════════════════════════════════════════════════");
-            System.out.println("  1. Add a new transaction");
+            System.out.println("  1. Add a new transaction (Note: Crypto needs full IDs, e.g. 'bitcoin', 'ethereum')");
             System.out.println("  2. View portfolio summary");
             System.out.println("  3. Refresh prices (re-evaluate)");
             System.out.println("  4. Generate reports (CSV + PDF)");

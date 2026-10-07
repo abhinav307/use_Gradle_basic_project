@@ -45,11 +45,17 @@ public class AlphaVantageClient implements MarketDataClient {
 
             String responseBody = response.body().string();
             JsonNode root = objectMapper.readTree(responseBody);
+
+            if (root.has("Information") || root.has("Note")) {
+                String msg = root.has("Information") ? root.get("Information").asText() : root.get("Note").asText();
+                throw new IOException("Alpha Vantage API Rate Limit hit: " + msg);
+            }
+
             JsonNode globalQuote = root.get("Global Quote");
 
             if (globalQuote == null || globalQuote.isEmpty()) {
                 throw new IOException("No data returned for symbol: " + symbol
-                        + ". Check your API key or rate limits.");
+                        + ". Response: " + responseBody);
             }
 
             double price = Double.parseDouble(globalQuote.get("05. price").asText());
