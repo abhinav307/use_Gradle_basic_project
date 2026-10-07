@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { ShieldAlert, TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { ShieldAlert, TrendingUp, DollarSign, Activity, Plus } from 'lucide-react';
 
 interface PortfolioSummary {
   userId: string;
@@ -27,6 +27,8 @@ function App() {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [insights, setInsights] = useState<any>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [newTx, setNewTx] = useState({ symbol: '', name: '', category: 'STOCK', quantity: '', price: '', fee: '0' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const userId = '123e4567-e89b-12d3-a456-426614174000';
 
   useEffect(() => {
@@ -47,6 +49,29 @@ function App() {
     axios.get('http://localhost:8080/api/v1/portfolios/transactions', { headers })
       .then(res => setTransactions(res.data))
       .catch(err => console.error(err));
+  };
+
+  const handleAddTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const headers = { 'X-User-Id': userId };
+    const payload = {
+      assetSymbol: newTx.symbol,
+      assetName: newTx.name,
+      assetCategory: newTx.category,
+      quantity: parseFloat(newTx.quantity),
+      purchasePrice: parseFloat(newTx.price),
+      feePaid: parseFloat(newTx.fee),
+      currency: 'USD'
+    };
+
+    axios.post('http://localhost:8080/api/v1/portfolios/transactions', payload, { headers })
+      .then(() => {
+        setNewTx({ symbol: '', name: '', category: 'STOCK', quantity: '', price: '', fee: '0' });
+        fetchDashboard();
+      })
+      .catch(err => console.error(err))
+      .finally(() => setIsSubmitting(false));
   };
 
   const generateChartData = () => {
@@ -126,6 +151,39 @@ function App() {
               <h2 className="text-2xl font-bold text-slate-900">{insights?.communityHealthScore || 0} / 100</h2>
             </div>
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <h3 className="text-lg font-bold text-slate-900 mb-4">Quick Trade</h3>
+          <form onSubmit={handleAddTransaction} className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Asset Symbol</label>
+              <input required type="text" placeholder="e.g. MSFT, ethereum" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" value={newTx.symbol} onChange={e => setNewTx({...newTx, symbol: e.target.value})} />
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Asset Category</label>
+              <select className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" value={newTx.category} onChange={e => setNewTx({...newTx, category: e.target.value})}>
+                <option value="STOCK">Stock</option>
+                <option value="CRYPTO">Crypto</option>
+                <option value="ETF">ETF</option>
+              </select>
+            </div>
+            <div className="w-24">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Quantity</label>
+              <input required type="number" step="any" placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" value={newTx.quantity} onChange={e => setNewTx({...newTx, quantity: e.target.value})} />
+            </div>
+            <div className="w-32">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Buy Price ($)</label>
+              <input required type="number" step="any" placeholder="0.00" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" value={newTx.price} onChange={e => setNewTx({...newTx, price: e.target.value})} />
+            </div>
+            <div className="w-32">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Broker Fee ($)</label>
+              <input required type="number" step="any" placeholder="0.00" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" value={newTx.fee} onChange={e => setNewTx({...newTx, fee: e.target.value})} />
+            </div>
+            <button type="submit" disabled={isSubmitting} className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 h-[38px]">
+              <Plus className="w-4 h-4" /> {isSubmitting ? 'Processing...' : 'Execute'}
+            </button>
+          </form>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
